@@ -17,31 +17,21 @@ exports.toDOMFragment = (text='', filePath, grammar, callback) ->
   render text, filePath, (error, html) ->
     return callback(error) if error?
 
-    template = document.createElement('template')
-    template.innerHTML = html
-    domFragment = template.content.cloneNode(true)
+    iframe = document.createElement('iframe')
+    iframe.src = "data:text/html, #{encodeURIComponent html}"
 
-    # Default code blocks to be coffee in Literate CoffeeScript files
-    # defaultCodeLanguage = 'coffee' if grammar?.scopeName is 'source.litcoffee'
-    # convertCodeBlocksToAtomEditors(domFragment, defaultCodeLanguage)
-    callback(null, domFragment)
+    callback(null, iframe)
 
 exports.toHTML = (text='', filePath, grammar, callback) ->
   render text, filePath, (error, html) ->
     return callback(error) if error?
-    # Default code blocks to be coffee in Literate CoffeeScript files
-    # defaultCodeLanguage = 'coffee' if grammar?.scopeName is 'source.litcoffee'
-    # html = tokenizeCodeBlocks(html, defaultCodeLanguage)
     callback(null, html)
 
 render = (text, filePath, callback) ->
-  # Remove the <!doctype> since otherwise marked will escape it
-  # https://github.com/chjj/marked/issues/354
-  text = text.replace(/^\s*<!doctype(\s+.*)?>\s*/i, '')
-
   path_ = atom.config.get 'markdown-preview-pandoc.pandocPath'
   opts_ = atom.config.get 'markdown-preview-pandoc.pandocOpts'
   return unless path_? and opts_?
+
   pandoc=process.spawn(
     path_,
     opts_.split(' ')
@@ -49,45 +39,26 @@ render = (text, filePath, callback) ->
 
   html = ""
   error = ""
-  pandoc.stdout.on 'data', (data) -> html+=data
-  pandoc.stderr.on 'data', (data) -> error+=data
+  pandoc.stdout.on 'data', (data) -> html += data
+  pandoc.stderr.on 'data', (data) -> error += data
+
   pandoc.stdin.write(text)
   pandoc.stdin.end()
-  pandoc.on 'close', (code) ->
-    return callback(error+html) if code!=0
-    html = sanitize(html)
-    html = resolveImagePaths(html, filePath)
-    callback(null, html.trim())
 
-sanitize = (html) ->
-  o = cheerio.load(html)
-  o('script').remove()
-  attributesToRemove = [
-    'onabort'
-    'onblur'
-    'onchange'
-    'onclick'
-    'ondbclick'
-    'onerror'
-    'onfocus'
-    'onkeydown'
-    'onkeypress'
-    'onkeyup'
-    'onload'
-    'onmousedown'
-    'onmousemove'
-    'onmouseover'
-    'onmouseout'
-    'onmouseup'
-    'onreset'
-    'onresize'
-    'onscroll'
-    'onselect'
-    'onsubmit'
-    'onunload'
-  ]
-  o('*').removeAttr(attribute) for attribute in attributesToRemove
-  o.html()
+  pandoc.on 'close', (code) ->
+    if code != 0
+      output = error.trim()
+      console.log(opts_)
+
+      error =
+        display: '$ ' + path_ + ' ...\n  ' + output.split('\n').join('\n  ')
+        output: output
+        statusCode: code
+
+      return callback(error)
+    else
+      html = resolveImagePaths(html, filePath)
+      callback(null, html.trim())
 
 resolveImagePaths = (html, filePath) ->
   o = cheerio.load(html)

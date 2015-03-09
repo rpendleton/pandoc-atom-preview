@@ -186,11 +186,11 @@ class MarkdownPreviewView extends ScrollView
     @editor?.getGrammar()
 
   showError: (result) ->
-    failureMessage = result?.message
+    failureMessage = result?.display
 
     @html $$$ ->
       @h2 'Previewing Markdown Failed'
-      @h3 failureMessage if failureMessage?
+      @pre class: 'error', failureMessage if failureMessage?
 
   showLoading: ->
     @loading = true
@@ -229,13 +229,16 @@ class MarkdownPreviewView extends ScrollView
       if projectPath = atom.project.getPath()
         filePath = path.join(projectPath, filePath)
 
-    if htmlFilePath = atom.showSaveDialogSync(filePath)
-      # Hack to prevent encoding issues
-      # https://github.com/atom/markdown-preview-pandoc/issues/96
-      html = @[0].innerHTML.split('').join('')
+    @getMarkdownSource().then (source) =>
+      return unless source?
 
-      fs.writeFileSync(htmlFilePath, html)
-      atom.workspace.open(htmlFilePath)
+      renderer.toHTML source, @getPath(), @getGrammar(), (error, html) =>
+        if error?
+          console.warn('Copying Markdown as HTML failed', error)
+        else
+          if htmlFilePath = atom.showSaveDialogSync(filePath)
+            fs.writeFileSync(htmlFilePath, html)
+            atom.workspace.open(htmlFilePath)
 
   isEqual: (other) ->
     @[0] is other?[0] # Compare DOM elements
