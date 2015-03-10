@@ -32,9 +32,13 @@ render = (text, filePath, callback) ->
   opts_ = atom.config.get 'markdown-preview-pandoc.pandocOpts'
   return unless path_? and opts_?
 
+  options =
+      cwd: path.dirname filePath
+
   pandoc=process.spawn(
     path_,
-    opts_.split(' ')
+    opts_.split(' '),
+    options
   )
 
   html = ""
