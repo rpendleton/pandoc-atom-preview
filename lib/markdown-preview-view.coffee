@@ -161,7 +161,7 @@ class MarkdownPreviewView extends ScrollView
         domFragment.className = 'loading'
         @append(domFragment)
         domFragment.addEventListener 'load', (e) ->
-          if e.target.contentWindow.MathJax.version
+          if e.target.contentWindow.MathJax?.version
             e.target.contentWindow.MathJax.Hub.Queue ->
               self.pageReady(domFragment)
           else
