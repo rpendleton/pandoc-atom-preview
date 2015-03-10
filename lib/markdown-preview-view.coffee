@@ -141,17 +141,31 @@ class MarkdownPreviewView extends ScrollView
     else
       Promise.resolve(null)
 
+  pageReady: (domFragment) ->
+    @loading = false
+    @emitter.emit 'did-change-markdown'
+    @originalTrigger('markdown-preview-pandoc:markdown-changed')
+
+    if old = @find('iframe.loaded')[0]
+      domFragment.contentWindow.scrollTo(0, old.contentWindow.scrollY)
+
+    @find(':not(.loading)').remove()
+    domFragment.className = 'loaded'
+
   renderMarkdownText: (text) ->
     renderer.toDOMFragment text, @getPath(), @getGrammar(), (error, domFragment) =>
       if error
         @showError(error)
       else
-        @loading = false
-        @empty()
+        self = this
+        domFragment.className = 'loading'
         @append(domFragment)
-        @scrollToEditorPos(@editor.getCursorScreenRow())
-        @emitter.emit 'did-change-markdown'
-        @originalTrigger('markdown-preview-pandoc:markdown-changed')
+        domFragment.addEventListener 'load', (e) ->
+          if e.target.contentWindow.MathJax.version
+            e.target.contentWindow.MathJax.Hub.Queue ->
+              self.pageReady(domFragment)
+          else
+            self.pageReady(domFragment)
 
   scrollToEditorPos: (line) ->
     line=(@editor.getFirstVisibleScreenRow()+
@@ -194,8 +208,9 @@ class MarkdownPreviewView extends ScrollView
 
   showLoading: ->
     @loading = true
-    @html $$$ ->
-      @div class: 'markdown-spinner', 'Loading Markdown\u2026'
+    @append $$$ ->
+      @div class: 'loader', =>
+        @div class: 'markdown-spinner', 'Generating Document\u2026'
 
   copyToClipboard: ->
     return false if @loading
