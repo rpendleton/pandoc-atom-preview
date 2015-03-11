@@ -1,18 +1,16 @@
-path = require 'path'
-
-{Emitter, Disposable, CompositeDisposable} = require 'atom'
-{$, $$$, ScrollView} = require 'atom-space-pen-views'
-Grim = require 'grim'
 _ = require 'underscore-plus'
+path = require 'path'
 fs = require 'fs-plus'
 {File} = require 'pathwatcher'
+{Emitter, Disposable, CompositeDisposable} = require 'atom'
+{$, $$$, ScrollView} = require 'atom-space-pen-views'
 
 renderer = require './renderer'
 
 module.exports =
-class MarkdownPreviewView extends ScrollView
+class PandocPreviewView extends ScrollView
   @content: ->
-    @div class: 'markdown-preview-pandoc native-key-bindings', tabindex: -1
+    @div class: 'pandoc-preview native-key-bindings', tabindex: -1
 
   constructor: ({@editorId, @filePath}) ->
     super
@@ -33,7 +31,7 @@ class MarkdownPreviewView extends ScrollView
           @subscribeToFilePath(@filePath)
 
   serialize: ->
-    deserializer: 'MarkdownPreviewView'
+    deserializer: 'PandocPreviewView'
     filePath: @getPath()
     editorId: @editorId
 
@@ -49,11 +47,6 @@ class MarkdownPreviewView extends ScrollView
 
   onDidChangeMarkdown: (callback) ->
     @emitter.on 'did-change-markdown', callback
-
-  on: (eventName) ->
-    if eventName is 'markdown-preview-pandoc:markdown-changed'
-      Grim.deprecate("Use MarkdownPreviewView::onDidChangeMarkdown instead of the 'markdown-preview-pandoc:markdown-changed' jQuery event")
-    super
 
   subscribeToFilePath: (filePath) ->
     @file = new File(filePath)
@@ -87,9 +80,6 @@ class MarkdownPreviewView extends ScrollView
   handleEvents: ->
     @disposables.add atom.grammars.onDidAddGrammar => _.debounce((=> @renderMarkdown()), 250)
     @disposables.add atom.grammars.onDidUpdateGrammar _.debounce((=> @renderMarkdown()), 250)
-    @disposables.add @editor.onDidChangeScrollTop =>
-      @scrollToEditorPos() if atom.config.get(
-        'markdown-preview-pandoc.scrollWithEditor')
 
     atom.commands.add @element,
       'core:move-up': =>
@@ -101,13 +91,13 @@ class MarkdownPreviewView extends ScrollView
         @saveAs()
       'core:copy': (event) =>
         event.stopPropagation() if @copyToClipboard()
-      'markdown-preview-pandoc:zoom-in': =>
+      'pandoc-preview:zoom-in': =>
         zoomLevel = parseFloat(@css('zoom')) or 1
         @css('zoom', zoomLevel + .1)
-      'markdown-preview-pandoc:zoom-out': =>
+      'pandoc-preview:zoom-out': =>
         zoomLevel = parseFloat(@css('zoom')) or 1
         @css('zoom', zoomLevel - .1)
-      'markdown-preview-pandoc:reset-zoom': =>
+      'pandoc-preview:reset-zoom': =>
         @css('zoom', 1)
 
     changeHandler = =>
@@ -122,12 +112,12 @@ class MarkdownPreviewView extends ScrollView
       @disposables.add @file.onDidChange(changeHandler)
     else if @editor?
       @disposables.add @editor.getBuffer().onDidStopChanging =>
-        changeHandler() if atom.config.get 'markdown-preview-pandoc.liveUpdate'
+        changeHandler() if atom.config.get 'pandoc-preview.liveUpdate'
       @disposables.add @editor.onDidChangePath => @emitter.emit 'did-change-title'
       @disposables.add @editor.getBuffer().onDidSave =>
-        changeHandler() unless atom.config.get 'markdown-preview-pandoc.liveUpdate'
+        changeHandler() unless atom.config.get 'pandoc-preview.liveUpdate'
       @disposables.add @editor.getBuffer().onDidReload =>
-        changeHandler() unless atom.config.get 'markdown-preview-pandoc.liveUpdate'
+        changeHandler() unless atom.config.get 'pandoc-preview.liveUpdate'
 
   renderMarkdown: ->
     @showLoading()
@@ -144,7 +134,7 @@ class MarkdownPreviewView extends ScrollView
   pageReady: (domFragment) ->
     @loading = false
     @emitter.emit 'did-change-markdown'
-    @originalTrigger('markdown-preview-pandoc:markdown-changed')
+    @originalTrigger('pandoc-preview:markdown-changed')
 
     if old = @find('iframe.loaded')[0]
       domFragment.contentWindow.scrollTo(0, old.contentWindow.scrollY)
@@ -167,28 +157,22 @@ class MarkdownPreviewView extends ScrollView
           else
             self.pageReady(domFragment)
 
-  scrollToEditorPos: (line) ->
-    line=(@editor.getFirstVisibleScreenRow()+
-        @editor.getLastVisibleScreenRow())/2 unless line
-    p=line/@editor.getLastScreenRow()
-    @scrollTop(p*this[0].scrollHeight-@height()/2)
-
   getTitle: ->
     if @file?
       "#{path.basename(@getPath())} Preview"
     else if @editor?
       "#{@editor.getTitle()} Preview"
     else
-      "Markdown Preview"
+      "Document Preview"
 
   getIconName: ->
     "markdown"
 
   getURI: ->
     if @file?
-      "markdown-preview-pandoc://#{@getPath()}"
+      "pandoc-preview://#{@getPath()}"
     else
-      "markdown-preview-pandoc://editor/#{@editorId}"
+      "pandoc-preview://editor/#{@editorId}"
 
   getPath: ->
     if @file?

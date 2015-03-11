@@ -1,24 +1,19 @@
-path = require 'path'
 _ = require 'underscore-plus'
-cheerio = require 'cheerio'
+path = require 'path'
 fs = require 'fs-plus'
-Highlights = require 'highlights'
+process = require 'child_process'
+cheerio = require 'cheerio'
 {$} = require 'atom-space-pen-views'
-roaster = null # Defer until used
-{scopeForFenceName} = require './extension-helper'
 
-highlighter = null
 {resourcePath} = atom.getLoadSettings()
 packagePath = path.dirname(__dirname)
-
-process = require 'child_process'
 
 exports.toDOMFragment = (text='', filePath, grammar, callback) ->
   render text, filePath, (error, html) ->
     return callback(error) if error?
 
     iframe = document.createElement('iframe')
-    iframe.src = "data:text/html, #{encodeURIComponent html}"
+    iframe.src = "data:text/html;charset=UTF-8, #{encodeURIComponent html}"
 
     callback(null, iframe)
 
@@ -28,8 +23,8 @@ exports.toHTML = (text='', filePath, grammar, callback) ->
     callback(null, html)
 
 render = (text, filePath, callback) ->
-  path_ = atom.config.get 'markdown-preview-pandoc.pandocPath'
-  opts_ = atom.config.get 'markdown-preview-pandoc.pandocOpts'
+  path_ = atom.config.get 'pandoc-preview.pandocPath'
+  opts_ = atom.config.get 'pandoc-preview.pandocOpts'
   return unless path_? and opts_?
 
   options =
@@ -52,7 +47,6 @@ render = (text, filePath, callback) ->
   pandoc.on 'close', (code) ->
     if code != 0
       output = error.trim()
-      console.log(opts_)
 
       error =
         display: '$ ' + path_ + ' ...\n  ' + output.split('\n').join('\n  ')

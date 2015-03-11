@@ -1,10 +1,10 @@
 {
-  "name": "markdown-preview-pandoc",
+  "name": "pandoc-preview",
   "version": "0.0.12",
   "main": "./lib/main",
-  "styles": "markdown-preview.less",
-  "description": "Open a pandoc-rendered version of the Markdown in the current editor with `ctrl-shift-m`. This is a fork of markdown-preview package",
-  "repository": "https://github.com/lierdakil/markdown-preview-pandoc",
+  "styles": "pandoc-preview.less",
+  "description": "Open a pandoc-rendered version of the Markdown in the current editor with `ctrl-shift-m`. This is a fork of markdown-preview-pandoc package",
+  "repository": "https://github.com/ryanp-me/pandoc-preview",
   "license": "MIT",
   "engines": {
     "atom": ">=0.177.0"
@@ -13,8 +13,6 @@
     "atom-space-pen-views": "^2.0.0",
     "cheerio": "0.15.0",
     "fs-plus": "^2.0.0",
-    "grim": "^1.0.0",
-    "highlights": "^1.0.0",
     "pathwatcher": "^3.0",
     "temp": "^0.8.1",
     "underscore-plus": "^1.0.0",
